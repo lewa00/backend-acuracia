@@ -1,35 +1,56 @@
-from fastapi import FastAPI, UploadFile, File
-import fitz  # PyMuPDF para manipular PDFs
-from fastapi import FastAPI, UploadFile, File
-import fitz  # PyMuPDF para manipular PDFs
 import boto3
-import requests  # Para integrar a API da Claude
-import json
 import os
-import google.generativeai as genai
+from botocore.exceptions import NoCredentialsError
+import requests
 
-# Configuração da API Gemini (Google AI)
-GOOGLE_API_KEY = "AIzaSyA4bBE02Usi7kc1tAuGJxb9r1I7-6ehiZ8"
-genai.configure(api_key=GOOGLE_API_KEY)
+# Configuração do DigitalOcean Spaces
+s3 = boto3.client(
+    's3',
+    region_name=os.getenv("SPACES_REGION", "nyc3"),
+    endpoint_url=os.getenv("SPACES_ENDPOINT", "https://nyc3.digitaloceanspaces.com"),
+    aws_access_key_id=os.getenv("SPACES_ACCESS_KEY"),
+    aws_secret_access_key=os.getenv("SPACES_SECRET_KEY"),
+)
 
-app = FastAPI()
+def upload_to_spaces(file_path, file_name, bucket_name):
+    try:
+        s3.upload_file(file_path, bucket_name, file_name)
+        return f"https://{bucket_name}.nyc3.digitaloceanspaces.com/{file_name}"
+    except NoCredentialsError:
+        print("Credenciais inválidas!")
+        return None
 
-@app.post("/processar-pdf/")
-async def processar_pdf(file: UploadFile = File(...)):
-    conteudo_pdf = await file.read()
-    pdf_documento = fitz.open(stream=conteudo_pdf, filetype="pdf")
+# Integração com a API da Claude 3.5 Sonnet
+def process_with_claude(pdf_content):
+    api_url = "https://api.anthropic.com/v1/complete"
+    api_key = os.getenv("CLAUDE_API_KEY")
+    headers = {
+        "x-api-key": api_key,
+        "Content-Type": "application/json"
+    }
+    data = {
+        "prompt": "Extraia o texto do seguinte PDF:",
+        "model": "claude-3.5-sonnet",
+        "max_tokens": 1000,
+        "temperature": 0.7,
+        "document": pdf_content.decode("utf-8")
+    }
+    response = requests.post(api_url, json=data, headers=headers)
+    return response.json()
 
-    texto_completo = ''
-    for pagina in pdf_documento:
-        texto_completo += pagina.get_text()
-
-    # Enviar o texto para a API Gemini 1.5 Flash para gerar perguntas e respostas
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(
-        f"Leia o seguinte conteúdo extraído de um PDF e gere um conjunto de perguntas e respostas úteis para ensino:\n\n{texto_completo}"
-    )
-
-    # Capturar resposta da Gemini
-    perguntas_respostas = response.text
-
-    return {"resultado": perguntas_respostas}
+# Exemplo de uso da integração
+def processar_pdf(file_path, file_name, bucket_name):
+    # Enviar o arquivo para o Spaces
+    file_url = upload_to_spaces(file_path, file_name, bucket_name)
+    if file_url:
+        print(f"Arquivo enviado com sucesso: {file_url}")
+    else:
+        print("Erro ao enviar o arquivo.")
+        return
+    
+    # Processar com Claude
+    with open(file_path, "rb") as file:
+        pdf_content = file.read()
+    extracted_text = process_with_claude(pdf_content)
+    print("Texto extraído:", extracted_text)
+    return extracted_text
