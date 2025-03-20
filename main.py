@@ -6,10 +6,10 @@ import requests
 # Configuração do DigitalOcean Spaces
 s3 = boto3.client(
     's3',
-    region_name=os.getenv("SPACES_REGION", "nyc3"),
-    endpoint_url=os.getenv("SPACES_ENDPOINT", "https://nyc3.digitaloceanspaces.com"),
-    aws_access_key_id=os.getenv("SPACES_ACCESS_KEY"),
-    aws_secret_access_key=os.getenv("SPACES_SECRET_KEY"),
+    region_name=os.getenv("SPACES_REGION", "acuracia-uploads"),
+    endpoint_url=os.getenv("SPACES_ENDPOINT", "https://acuracia-uploads.nyc3.digitaloceanspaces.com"),
+    aws_access_key_id=os.getenv("DO004TMXGE2EDPLNNXQ4"),
+    aws_secret_access_key=os.getenv("dop_v1_48d8e3960b0a46efaeabeaee80699a3b0553cee54d6ddae9a6099268cb6c032a"),
 )
 
 def upload_to_spaces(file_path, file_name, bucket_name):
