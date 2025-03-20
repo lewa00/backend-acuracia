@@ -77,7 +77,7 @@ async def processar_pdf(
     extracted_text = extract_text_from_pdf(file_content)
     
     # Definir API Key e modelo da Claude (usa a chave fixa como padrão)
-    api_key = claude_api_key if claude_api_key else "op_v1_48d8e3960b0a46efaeabeaee80699a3b0553cee54d6ddae9a6099268cb6c032a"
+    api_key = claude_api_key if claude_api_key else "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"
     model = claude_model if claude_model else os.getenv("CLAUDE_MODEL", "claude-3.5-sonnet")
 
     # Enviar para análise na Claude
