@@ -3,15 +3,15 @@ import os
 import fitz  # PyMuPDF para processar PDFs
 import requests
 from botocore.exceptions import NoCredentialsError
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 
 app = FastAPI()
 
 # Configuração do DigitalOcean Spaces
 s3 = boto3.client(
     "s3",
-    region_name=os.getenv("SPACES_REGION"),  # Defina nas variáveis de ambiente
-    endpoint_url=os.getenv("SPACES_ENDPOINT"),
+    region_name=os.getenv("SPACES_REGION", "nyc3"),  # Região padrão
+    endpoint_url=os.getenv("SPACES_ENDPOINT", "https://acuracia-uploads.nyc3.digitaloceanspaces.com"),
     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
 )
@@ -37,19 +37,18 @@ def extract_text_from_pdf(pdf_content):
             texto_completo += pagina.get_text("text") + "\n"
     return texto_completo
 
-def process_with_claude(text):
+def process_with_claude(text, api_key, model):
     """
     Envia o texto extraído para a API Claude 3.5 Sonnet.
     """
     api_url = "https://api.anthropic.com/v1/complete"
-    api_key = os.getenv("CLAUDE_API_KEY")  # Defina sua chave nas variáveis de ambiente
     headers = {
         "x-api-key": api_key,
         "Content-Type": "application/json"
     }
     data = {
         "prompt": f"Analise o seguinte texto do PDF:\n{text}",
-        "model": "claude-3.5-sonnet",
+        "model": model,  # Modelo informado pelo usuário
         "max_tokens": 1000,
         "temperature": 0.7
     }
@@ -57,7 +56,11 @@ def process_with_claude(text):
     return response.json()
 
 @app.post("/processar-pdf/")
-async def processar_pdf(file: UploadFile = File(...)):
+async def processar_pdf(
+    file: UploadFile = File(...),
+    claude_api_key: str = Form(None),  # Permite passar a chave na requisição
+    claude_model: str = Form(None)  # Permite passar o modelo na requisição
+):
     """
     Recebe um PDF via API, faz upload para o Spaces, extrai o texto e processa na Claude 3.5.
     """
@@ -73,12 +76,17 @@ async def processar_pdf(file: UploadFile = File(...)):
     # Extrair texto do PDF
     extracted_text = extract_text_from_pdf(file_content)
     
+    # Definir API Key e modelo da Claude (usa a chave fixa como padrão)
+    api_key = claude_api_key if claude_api_key else "op_v1_48d8e3960b0a46efaeabeaee80699a3b0553cee54d6ddae9a6099268cb6c032a"
+    model = claude_model if claude_model else os.getenv("CLAUDE_MODEL", "claude-3.5-sonnet")
+
     # Enviar para análise na Claude
-    analysis_result = process_with_claude(extracted_text)
+    analysis_result = process_with_claude(extracted_text, api_key, model)
 
     return {
         "mensagem": "Arquivo processado com sucesso!",
         "arquivo": file_url,
+        "modelo_utilizado": model,
         "texto_extraido": extracted_text,
         "analise_claude": analysis_result
     }
