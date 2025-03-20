@@ -17,8 +17,8 @@ async def processar_pdf(file: UploadFile = File(...)):
     for pagina in pdf_documento:
         texto_completo += pagina.get_text()
 
-    # Enviar o texto para a API Gemini para gerar perguntas e respostas
-    model = genai.GenerativeModel("gemini-pro")
+    # Enviar o texto para a API Gemini 1.5 Flash para gerar perguntas e respostas
+    model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content(
         f"Leia o seguinte conteúdo extraído de um PDF e gere um conjunto de perguntas e respostas úteis para ensino:\n\n{texto_completo}"
     )
