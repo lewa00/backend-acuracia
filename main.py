@@ -1,5 +1,11 @@
 from fastapi import FastAPI, UploadFile, File
 import fitz  # PyMuPDF para manipular PDFs
+from fastapi import FastAPI, UploadFile, File
+import fitz  # PyMuPDF para manipular PDFs
+import boto3
+import requests  # Para integrar a API da Claude
+import json
+import os
 import google.generativeai as genai
 
 # Configuração da API Gemini (Google AI)
