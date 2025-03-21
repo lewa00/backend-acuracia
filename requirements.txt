@@ -1,6 +1,1 @@
-boto3
-fastapi
-uvicorn
-PyMuPDF
-google-generativeai
-python-multipart
+
